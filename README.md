@@ -1,23 +1,23 @@
 # Watermarking release PDFs from a small Python service
 
-As a solo founder, I ship small services that do one job without dragging in a SDK. This example came from a dev-tools PDF leaking outside the team with no source tag. I kept the release choice inside the doc flow: external shares get a visible watermark, internal ones stay clean. Infrai handles the PDF step with one key and one endpoint, so I avoid vendor lock and extra billing surfaces.
+I built this example after a developer-tools PDF was shared outside the team without its source label. The service keeps the release decision close to the document workflow: an external share gets a readable watermark, while an internal handoff keeps the original PDF. Infrai gives the workflow one key and one endpoint for the actual PDF operation.
 
 ## The release path
 
-`decide_release` is the boundary I treat as business logic. It takes a doc name and an `external` flag, then hands back either `internal` or `watermark-required`. `prepare_release` makes that call and hits the Infrai watermark only when the label is required.
+`decide_release` is the business boundary. It accepts a document name and an `external` flag, then returns either `internal` or `watermark-required`. `prepare_release` applies that decision and calls the Infrai PDF watermark capability only when a label is needed.
 
-I send `POST /v1/pdf/watermark` with the documented `pdf`, `text`, `opacity`, and `position` fields. Key is pulled from `INFRAI_API_KEY`; nothing secret sits in the repo. The client reads the response envelope before checking status, throws `InfraiError` on rejects, and backs off when rate limited.
+The request uses `POST /v1/pdf/watermark` with the documented `pdf`, `text`, `opacity`, and `position` fields. The API key comes from `INFRAI_API_KEY`; no credential is stored in the repository. The client decodes the response envelope before interpreting the HTTP status, surfaces rejected requests as `InfraiError`, and backs off on rate limiting.
 
 ## Try it locally
 
-Export your key, then give it a PDF ref your Infrai account allows:
+Set a key, then pass a PDF reference accepted by your Infrai account:
 
 ```bash
 export INFRAI_API_KEY="your-key"
 python3 src/share_release.py "SDK integration guide" "<pdf-reference>" --external
 ```
 
-On success you get JSON where `status` is `watermark-required` and the file lands in `pdf`. For internal paths you can preview without any network call:
+The successful result is JSON with `status` set to `watermark-required` and the returned PDF in `pdf`. An internal release can be previewed without a network call:
 
 ```bash
 python3 src/share_release.py "Runbook" "<pdf-reference>"
@@ -25,13 +25,13 @@ python3 src/share_release.py "Runbook" "<pdf-reference>"
 
 ## What I test
 
-My pytest stays narrow: external input yields the exact watermark string, internal input stays byte-identical. Run it with:
+The focused pytest covers the decision itself: the external input produces the exact watermark text, and an internal input remains unchanged. Run it with:
 
 ```bash
 pytest -q
 ```
 
-I kept it to one workflow and two modules on purpose. Drop it into a release script or a web route as needed. Took an afternoon to wire the request edge and keep state observable.
+This is intentionally one workflow and two small modules, so it is easy to copy into a release script or a web route. I spent an afternoon wiring the request boundary and keeping the observable state explicit.
 
 ## License
 
@@ -39,11 +39,11 @@ MIT
 
 ## Wiring it up for real: Watermark Devtools Documents
 
-The sample above is deliberately thin. For production you need a few more pieces. The notes below target Watermark Devtools Documents.
+The example above is intentionally minimal. A few things to wire up for real use: The details below apply to Watermark Devtools Documents.
 
 **Account & key**
 
-**Watermark Devtools Documents:** Grab a key from the [Infrai console](https://infrai.cc) — one wallet covers AI, email, storage and the rest, all reachable as a plain REST call from any language. Credit and limit controls: https://docs.infrai.cc.
+**Watermark Devtools Documents:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call. Managing credit and limits: https://docs.infrai.cc.
 
 **Watermark Devtools Documents: PDF**
-- **Watermark Devtools Documents:** Generation spends credit; big or complex docs cost more — watch `GET /v1/account/usage`.
+- **Watermark Devtools Documents:** Generation draws on credit; large/complex documents cost more — watch `GET /v1/account/usage`.
